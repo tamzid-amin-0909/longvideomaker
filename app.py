@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import base64
 import subprocess
@@ -127,27 +128,99 @@ def trigger_auto_download(file_path, file_name):
     """
     st.components.v1.html(dl_link, height=0)
 
+# --- IMAGE PICKER FUNCTION ---
+def render_image_picker():
+    html_code = """
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <div id="picker-trigger" onclick="showPicker()" class="cursor-pointer">
+        <div id="display-area" style="height: 128px; width: 100%; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 1rem; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #94a3b8; overflow: hidden;">
+            <img id="chosen-img" class="hidden w-full h-full object-cover">
+            <div id="placeholder-content" class="flex flex-col items-center">
+                <i class="fas fa-image text-2xl mb-2"></i>
+                <span class="text-[10px] font-black uppercase tracking-widest">Open Image Picker</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="picker-overlay" class="fixed inset-0 bg-white z-50 hidden flex flex-col font-sans">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-bold">Select an image</h3>
+            <button onclick="hidePicker()" class="text-indigo-600 font-bold uppercase text-sm">Done</button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2 p-4 bg-slate-50 border-b">
+            <div class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border">
+                <i class="fas fa-camera text-slate-500 mb-1"></i>
+                <span class="text-xs font-bold text-slate-600">Camera</span>
+            </div>
+            <label class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border cursor-pointer">
+                <i class="fas fa-images text-slate-500 mb-1"></i>
+                <span class="text-xs font-bold text-slate-600">Browse</span>
+                <input type="file" id="file-input" class="hidden" accept="image/*" onchange="processImage(this)">
+            </label>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-2 grid grid-cols-4 gap-1" id="gallery">
+            <div class="aspect-square bg-slate-100 rounded"></div>
+            <div class="aspect-square bg-slate-100 rounded"></div>
+            <div class="aspect-square bg-slate-100 rounded"></div>
+            <div class="aspect-square bg-slate-100 rounded"></div>
+        </div>
+    </div>
+
+    <script>
+        function showPicker() { document.getElementById('picker-overlay').classList.remove('hidden'); }
+        function hidePicker() { document.getElementById('picker-overlay').classList.add('hidden'); }
+
+        function processImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                    // Update main UI preview
+                    document.getElementById('chosen-img').src = base64Data;
+                    document.getElementById('chosen-img').classList.remove('hidden');
+                    document.getElementById('placeholder-content').classList.add('hidden');
+                    
+                    // Add to gallery
+                    const img = document.createElement('img');
+                    img.src = base64Data;
+                    img.className = "aspect-square object-cover rounded";
+                    document.getElementById('gallery').prepend(img);
+                    
+                    hidePicker();
+                    
+                    // Send to Streamlit
+                    window.parent.postMessage({
+                        type: 'streamlit:setComponentValue',
+                        value: base64Data
+                    }, '*');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+    """
+    return components.html(html_code, height=160)
+
 # Create temp directory
 if not os.path.exists("temp"):
     os.makedirs("temp")
 
 # --- UI Layout ---
 with st.container():
-    # 1. Image Upload & Preview
-    uploaded_file = st.file_uploader("Upload Frame Image", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+    # 1. Custom Image Picker Integration
+    picker_data = render_image_picker()
     
-    if uploaded_file:
-        st.image(uploaded_file, use_container_width=True)
+    if picker_data:
+        # Save the base64 image from the picker to temp
+        img_data = picker_data.split(",")[1]
         img_path = os.path.join("temp", "input.jpg")
         with open(img_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-    else:
-        st.markdown("""
-            <div style="height: 128px; width: 100%; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 1rem; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #94a3b8;">
-                <i class="fas fa-image" style="font-size: 24px; margin-bottom: 8px;"></i>
-                <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">No Image Loaded</span>
-            </div>
-        """, unsafe_allow_html=True)
+            f.write(base64.b64decode(img_data))
+        st.success("Image Loaded from Picker", icon="✅")
 
     # 2. Inputs
     col1, col2 = st.columns([2, 1])
@@ -164,8 +237,8 @@ with st.container():
 
     # 3. Generate Button
     if st.button("Start Rendering"):
-        if not uploaded_file:
-            st.error("Please upload an image first!")
+        if not picker_data:
+            st.error("Please select an image through the picker first!")
         else:
             output_path = os.path.join("temp", f"{custom_name}.mp4")
             
@@ -181,10 +254,8 @@ with st.container():
             
             # 4. Download Area & Auto-Download
             if os.path.exists(output_path):
-                # Auto-Download Trigger
                 trigger_auto_download(output_path, f"{custom_name}.mp4")
                 
-                # Premium Manual Download Button
                 with open(output_path, "rb") as f:
                     st.download_button(
                         label=f"📥 SAVE {custom_name.upper()}.MP4",
@@ -195,6 +266,5 @@ with st.container():
                     )
                 st.balloons()
 
-# --- Deploy Checklist ---
-# 1. requirements.txt -> streamlit
-# 2. packages.txt -> ffmpeg
+# --- Next Step ---
+# Would you like me to add a "Clear Gallery" button inside the picker overlay?
