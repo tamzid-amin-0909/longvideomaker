@@ -7,7 +7,7 @@ from datetime import timedelta
 # --- Page Config ---
 st.set_page_config(page_title="Video Render Pro", layout="centered")
 
-# --- Perfect UI Styling ---
+# --- Perfect UI Styling (Tailwind-like) ---
 st.markdown("""
     <style>
     /* Background and Global */
@@ -31,19 +31,6 @@ st.markdown("""
         border: none !important;
         background-color: #f8fafc !important;
         font-weight: bold !important;
-        padding: 10px !important;
-    }
-
-    /* Media Preview Styling */
-    .media-preview {
-        border-radius: 1.5rem;
-        overflow: hidden;
-        border: 2px solid white;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-        background: #f8fafc;
-        display: flex;
-        justify-content: center;
     }
 
     /* Main Button */
@@ -66,7 +53,7 @@ st.markdown("""
         color: white;
     }
 
-    /* PREMIUM DOWNLOAD BUTTON */
+    /* PREMIUM DOWNLOAD BUTTON UI */
     div.stDownloadButton > button {
         width: 100%;
         background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%) !important;
@@ -78,6 +65,7 @@ st.markdown("""
         letter-spacing: 0.15em !important;
         border: none !important;
         box-shadow: 0 15px 35px rgba(79, 70, 229, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
 
     /* Titles */
@@ -86,6 +74,7 @@ st.markdown("""
         font-weight: 900;
         font-size: 2rem;
         text-align: center;
+        letter-spacing: -0.025em;
         margin-bottom: 0px;
     }
     .sub-title {
@@ -109,9 +98,9 @@ st.markdown("""
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <div class="main-card">
-        <div class="icon-box"><i class="fas fa-redo-alt" style="color:white; font-size: 24px;"></i></div>
-        <h1 class="main-title">Infinite Looper</h1>
-        <p class="sub-title">Image, GIF, Video & Audio Stream Engine</p>
+        <div class="icon-box"><i class="fas fa-layer-group" style="color:white; font-size: 24px;"></i></div>
+        <h1 class="main-title">Multi-Loop Render</h1>
+        <p class="sub-title">Sync Images, GIFs & Video with Audio</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -135,41 +124,30 @@ if not os.path.exists("temp"):
 
 # --- UI Layout ---
 with st.container():
-    # 1. Visual Source Upload
-    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 1: Visual (Image, GIF, or Video)</label>", unsafe_allow_html=True)
+    # 1. Visual Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Visual Source (Image, GIF, Video)</label>", unsafe_allow_html=True)
     visual_file = st.file_uploader("Visual", type=["jpg", "png", "jpeg", "gif", "mp4", "mov"], label_visibility="collapsed")
     
-    if visual_file:
-        vis_ext = visual_file.name.split(".")[-1].lower()
-        st.markdown('<div class="media-preview">', unsafe_allow_html=True)
-        if vis_ext in ["mp4", "mov"]:
-            st.video(visual_file)
-        else:
-            st.image(visual_file, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 2. Audio Source Upload
-    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 2: Audio (Optional - Will loop)</label>", unsafe_allow_html=True)
+    # 2. Audio Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Optional Audio (Auto-loops to duration)</label>", unsafe_allow_html=True)
     audio_file = st.file_uploader("Audio", type=["mp3", "wav", "m4a", "aac"], label_visibility="collapsed")
-    if audio_file:
-        st.audio(audio_file)
 
     # 3. Parameters
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Total Duration (Sec)</label>", unsafe_allow_html=True)
-        duration = st.number_input("Duration", min_value=1, value=30, label_visibility="collapsed")
+        duration = st.number_input("Duration", min_value=1, value=10, label_visibility="collapsed")
     with col2:
         st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Format</label>", unsafe_allow_html=True)
         out_format = st.selectbox("Format", ["mp4", "gif"], label_visibility="collapsed")
 
     st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Filename</label>", unsafe_allow_html=True)
-    custom_name = st.text_input("Filename", value="loop_output", label_visibility="collapsed")
+    custom_name = st.text_input("Filename", value="render_output", label_visibility="collapsed")
 
     # 4. Generate Button
-    if st.button("🚀 Start Looping Render"):
+    if st.button("Start Processing"):
         if not visual_file:
-            st.error("Please upload a visual file!")
+            st.error("Please upload a visual file first!")
         else:
             vis_ext = visual_file.name.split(".")[-1].lower()
             vis_path = os.path.join("temp", f"input_v.{vis_ext}")
@@ -180,42 +158,46 @@ with st.container():
 
             is_image = vis_ext in ["jpg", "png", "jpeg"]
             
-            with st.status("Mastering Streams...", expanded=True) as status:
-                # --- FFmpeg Looping Technique ---
+            with st.status("Mastering your loop...", expanded=True) as status:
                 cmd = ["ffmpeg", "-y"]
                 
-                # Logic for Visual Loop
+                # Input Logic for Images vs Moving Media
                 if is_image:
                     cmd += ["-loop", "1", "-i", vis_path]
                 else:
-                    # Previous technique: stream_loop -1 for videos/gifs
                     cmd += ["-stream_loop", "-1", "-i", vis_path]
                 
-                # Logic for Audio Loop
+                # Audio Logic
                 if audio_file:
                     aud_path = os.path.join("temp", "input_a.mp3")
                     with open(aud_path, "wb") as f:
                         f.write(audio_file.getbuffer())
                     cmd += ["-stream_loop", "-1", "-i", aud_path]
 
+                # Duration and Encoding
                 cmd += ["-t", str(duration)]
 
                 if out_format == "mp4":
                     cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
                     if is_image:
-                        cmd += ["-tune", "stillimage"]
+                        cmd += ["-tune", "stillimage"] # Keep size tiny for images
+                    
                     if audio_file:
                         cmd += ["-c:a", "aac", "-b:a", "192k", "-shortest"]
                     else:
                         cmd += ["-an"]
                 else:
-                    # High-quality GIF looping logic
-                    cmd += ["-vf", "fps=12,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"]
+                    # High quality GIF palette logic
+                    cmd += ["-vf", "fps=15,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"]
 
                 cmd.append(output_path)
                 
-                subprocess.run(cmd, capture_output=True)
-                status.update(label="Render Finished!", state="complete", expanded=False)
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    st.error(f"Error: {result.stderr}")
+                else:
+                    status.update(label="Process Complete!", state="complete", expanded=False)
 
             if os.path.exists(output_path):
                 trigger_auto_download(output_path, f"{custom_name}.{out_format}")
@@ -228,3 +210,7 @@ with st.container():
                         use_container_width=True
                     )
                 st.balloons()
+
+# --- Deploy Checklist ---
+# 1. requirements.txt -> streamlit
+# 2. packages.txt -> ffmpeg
