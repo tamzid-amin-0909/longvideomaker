@@ -54,6 +54,26 @@ st.markdown("""
         color: white;
     }
 
+    /* PREMIUM DOWNLOAD BUTTON UI */
+    div.stDownloadButton > button {
+        width: 100%;
+        background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%) !important;
+        color: white !important;
+        border-radius: 1.25rem !important;
+        padding: 22px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.15em !important;
+        border: none !important;
+        box-shadow: 0 15px 35px rgba(79, 70, 229, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+
+    div.stDownloadButton > button:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 20px 45px rgba(79, 70, 229, 0.5) !important;
+    }
+
     /* Titles */
     .main-title {
         color: #1e293b;
@@ -91,6 +111,21 @@ st.markdown("""
         <p class="sub-title">Professional Static Processing</p>
     </div>
     """, unsafe_allow_html=True)
+
+# Helper function for Auto-Download
+def trigger_auto_download(file_path, file_name):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    b64 = base64.b64encode(data).decode()
+    dl_link = f"""
+    <script>
+    var link = document.createElement('a');
+    link.href = 'data:video/mp4;base64,{b64}';
+    link.download = '{file_name}';
+    link.dispatchEvent(new MouseEvent('click'));
+    </script>
+    """
+    st.components.v1.html(dl_link, height=0)
 
 # Create temp directory
 if not os.path.exists("temp"):
@@ -135,7 +170,6 @@ with st.container():
             output_path = os.path.join("temp", f"{custom_name}.mp4")
             
             with st.status("Encoding at light speed...", expanded=True) as status:
-                # The Ultra-Fast FFmpeg Command
                 cmd = [
                     "ffmpeg", "-y", "-loop", "1", "-framerate", f"1/{duration}",
                     "-i", "temp/input.jpg", "-c:v", "libx264", "-t", str(duration),
@@ -145,16 +179,21 @@ with st.container():
                 subprocess.run(cmd, capture_output=True)
                 status.update(label="Render Complete!", state="complete", expanded=False)
             
-            # 4. Download Area
+            # 4. Download Area & Auto-Download
             if os.path.exists(output_path):
+                # Auto-Download Trigger
+                trigger_auto_download(output_path, f"{custom_name}.mp4")
+                
+                # Premium Manual Download Button
                 with open(output_path, "rb") as f:
                     st.download_button(
-                        label="📥 Download Video",
+                        label=f"📥 SAVE {custom_name.upper()}.MP4",
                         data=f,
                         file_name=f"{custom_name}.mp4",
                         mime="video/mp4",
                         use_container_width=True
                     )
+                st.balloons()
 
 # --- Deploy Checklist ---
 # 1. requirements.txt -> streamlit
