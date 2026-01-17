@@ -26,12 +26,11 @@ st.markdown("""
     }
 
     /* Input Fields */
-    input {
+    input, .stSelectbox div[data-baseweb="select"] {
         border-radius: 1rem !important;
         border: none !important;
         background-color: #f8fafc !important;
         font-weight: bold !important;
-        padding: 12px !important;
     }
 
     /* Main Button */
@@ -69,11 +68,6 @@ st.markdown("""
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
 
-    div.stDownloadButton > button:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 20px 45px rgba(79, 70, 229, 0.5) !important;
-    }
-
     /* Titles */
     .main-title {
         color: #1e293b;
@@ -90,7 +84,6 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* Icon */
     .icon-box {
         background: #4f46e5;
         width: 64px;
@@ -100,15 +93,14 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin: 0 auto 1rem auto;
-        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
     }
     </style>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <div class="main-card">
-        <div class="icon-box"><i class="fas fa-video" style="color:white; font-size: 24px;"></i></div>
-        <h1 class="main-title">Video Render</h1>
-        <p class="sub-title">Professional Static Processing</p>
+        <div class="icon-box"><i class="fas fa-layer-group" style="color:white; font-size: 24px;"></i></div>
+        <h1 class="main-title">Multi-Loop Render</h1>
+        <p class="sub-title">Sync Images, GIFs & Video with Audio</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -120,77 +112,101 @@ def trigger_auto_download(file_path, file_name):
     dl_link = f"""
     <script>
     var link = document.createElement('a');
-    link.href = 'data:video/mp4;base64,{b64}';
+    link.href = 'data:application/octet-stream;base64,{b64}';
     link.download = '{file_name}';
     link.dispatchEvent(new MouseEvent('click'));
     </script>
     """
     st.components.v1.html(dl_link, height=0)
 
-# Create temp directory
 if not os.path.exists("temp"):
     os.makedirs("temp")
 
 # --- UI Layout ---
 with st.container():
-    # 1. Image Upload & Preview
-    uploaded_file = st.file_uploader("Upload Frame Image", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+    # 1. Visual Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Visual Source (Image, GIF, Video)</label>", unsafe_allow_html=True)
+    visual_file = st.file_uploader("Visual", type=["jpg", "png", "jpeg", "gif", "mp4", "mov"], label_visibility="collapsed")
     
-    if uploaded_file:
-        st.image(uploaded_file, use_container_width=True)
-        img_path = os.path.join("temp", "input.jpg")
-        with open(img_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-    else:
-        st.markdown("""
-            <div style="height: 128px; width: 100%; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 1rem; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #94a3b8;">
-                <i class="fas fa-image" style="font-size: 24px; margin-bottom: 8px;"></i>
-                <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">No Image Loaded</span>
-            </div>
-        """, unsafe_allow_html=True)
+    # 2. Audio Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Optional Audio (Auto-loops to duration)</label>", unsafe_allow_html=True)
+    audio_file = st.file_uploader("Audio", type=["mp3", "wav", "m4a", "aac"], label_visibility="collapsed")
 
-    # 2. Inputs
-    col1, col2 = st.columns([2, 1])
+    # 3. Parameters
+    col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Duration (Seconds)</label>", unsafe_allow_html=True)
-        duration = st.number_input("Duration", min_value=1, value=3600, label_visibility="collapsed")
+        st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Total Duration (Sec)</label>", unsafe_allow_html=True)
+        duration = st.number_input("Duration", min_value=1, value=10, label_visibility="collapsed")
     with col2:
-        st.markdown("<label style='font-size: 10px; font-weight: 900; color: #4f46e5; text-transform: uppercase;'>Time</label>", unsafe_allow_html=True)
-        readable_time = str(timedelta(seconds=duration))
-        st.markdown(f"<div style='font-weight: bold; color: #4f46e5; padding-top: 5px;'>{readable_time}</div>", unsafe_allow_html=True)
+        st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Format</label>", unsafe_allow_html=True)
+        out_format = st.selectbox("Format", ["mp4", "gif"], label_visibility="collapsed")
 
     st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Filename</label>", unsafe_allow_html=True)
     custom_name = st.text_input("Filename", value="render_output", label_visibility="collapsed")
 
-    # 3. Generate Button
-    if st.button("Start Rendering"):
-        if not uploaded_file:
-            st.error("Please upload an image first!")
+    # 4. Generate Button
+    if st.button("Start Processing"):
+        if not visual_file:
+            st.error("Please upload a visual file first!")
         else:
-            output_path = os.path.join("temp", f"{custom_name}.mp4")
+            vis_ext = visual_file.name.split(".")[-1].lower()
+            vis_path = os.path.join("temp", f"input_v.{vis_ext}")
+            output_path = os.path.join("temp", f"{custom_name}.{out_format}")
             
-            with st.status("Encoding at light speed...", expanded=True) as status:
-                cmd = [
-                    "ffmpeg", "-y", "-loop", "1", "-framerate", f"1/{duration}",
-                    "-i", "temp/input.jpg", "-c:v", "libx264", "-t", str(duration),
-                    "-pix_fmt", "yuv420p", "-r", f"1/{duration}", output_path
-                ]
+            with open(vis_path, "wb") as f:
+                f.write(visual_file.getbuffer())
+
+            is_image = vis_ext in ["jpg", "png", "jpeg"]
+            
+            with st.status("Mastering your loop...", expanded=True) as status:
+                cmd = ["ffmpeg", "-y"]
                 
-                subprocess.run(cmd, capture_output=True)
-                status.update(label="Render Complete!", state="complete", expanded=False)
-            
-            # 4. Download Area & Auto-Download
+                # Input Logic for Images vs Moving Media
+                if is_image:
+                    cmd += ["-loop", "1", "-i", vis_path]
+                else:
+                    cmd += ["-stream_loop", "-1", "-i", vis_path]
+                
+                # Audio Logic
+                if audio_file:
+                    aud_path = os.path.join("temp", "input_a.mp3")
+                    with open(aud_path, "wb") as f:
+                        f.write(audio_file.getbuffer())
+                    cmd += ["-stream_loop", "-1", "-i", aud_path]
+
+                # Duration and Encoding
+                cmd += ["-t", str(duration)]
+
+                if out_format == "mp4":
+                    cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
+                    if is_image:
+                        cmd += ["-tune", "stillimage"] # Keep size tiny for images
+                    
+                    if audio_file:
+                        cmd += ["-c:a", "aac", "-b:a", "192k", "-shortest"]
+                    else:
+                        cmd += ["-an"]
+                else:
+                    # High quality GIF palette logic
+                    cmd += ["-vf", "fps=15,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"]
+
+                cmd.append(output_path)
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    st.error(f"Error: {result.stderr}")
+                else:
+                    status.update(label="Process Complete!", state="complete", expanded=False)
+
             if os.path.exists(output_path):
-                # Auto-Download Trigger
-                trigger_auto_download(output_path, f"{custom_name}.mp4")
-                
-                # Premium Manual Download Button
+                trigger_auto_download(output_path, f"{custom_name}.{out_format}")
                 with open(output_path, "rb") as f:
                     st.download_button(
-                        label=f"📥 SAVE {custom_name.upper()}.MP4",
+                        label=f"📥 SAVE {custom_name.upper()}.{out_format.upper()}",
                         data=f,
-                        file_name=f"{custom_name}.mp4",
-                        mime="video/mp4",
+                        file_name=f"{custom_name}.{out_format}",
+                        mime="video/mp4" if out_format=="mp4" else "image/gif",
                         use_container_width=True
                     )
                 st.balloons()
