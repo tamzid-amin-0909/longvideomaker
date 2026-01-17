@@ -7,7 +7,7 @@ from datetime import timedelta
 # --- Page Config ---
 st.set_page_config(page_title="Video Render Pro", layout="centered")
 
-# --- Perfect UI Styling (Tailwind-like) ---
+# --- Perfect UI Styling ---
 st.markdown("""
     <style>
     /* Background and Global */
@@ -34,7 +34,7 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* Media Preview Container */
+    /* Media Preview Styling */
     .media-preview {
         border-radius: 1.5rem;
         overflow: hidden;
@@ -42,6 +42,8 @@ st.markdown("""
         box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         margin-bottom: 20px;
         background: #f8fafc;
+        display: flex;
+        justify-content: center;
     }
 
     /* Main Button */
@@ -64,7 +66,7 @@ st.markdown("""
         color: white;
     }
 
-    /* PREMIUM DOWNLOAD BUTTON UI */
+    /* PREMIUM DOWNLOAD BUTTON */
     div.stDownloadButton > button {
         width: 100%;
         background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%) !important;
@@ -76,7 +78,6 @@ st.markdown("""
         letter-spacing: 0.15em !important;
         border: none !important;
         box-shadow: 0 15px 35px rgba(79, 70, 229, 0.4) !important;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
 
     /* Titles */
@@ -85,7 +86,6 @@ st.markdown("""
         font-weight: 900;
         font-size: 2rem;
         text-align: center;
-        letter-spacing: -0.025em;
         margin-bottom: 0px;
     }
     .sub-title {
@@ -105,21 +105,13 @@ st.markdown("""
         justify-content: center;
         margin: 0 auto 1rem auto;
     }
-    
-    /* Custom Audio Player Styling */
-    audio {
-        width: 100%;
-        height: 40px;
-        border-radius: 10px;
-        margin-top: 10px;
-    }
     </style>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <div class="main-card">
-        <div class="icon-box"><i class="fas fa-play-circle" style="color:white; font-size: 24px;"></i></div>
-        <h1 class="main-title">Loop Studio</h1>
-        <p class="sub-title">Visual & Audio Mastering Engine</p>
+        <div class="icon-box"><i class="fas fa-redo-alt" style="color:white; font-size: 24px;"></i></div>
+        <h1 class="main-title">Infinite Looper</h1>
+        <p class="sub-title">Image, GIF, Video & Audio Stream Engine</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -143,8 +135,8 @@ if not os.path.exists("temp"):
 
 # --- UI Layout ---
 with st.container():
-    # 1. Visual Upload & Modern Preview
-    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 1: Visual Source</label>", unsafe_allow_html=True)
+    # 1. Visual Source Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 1: Visual (Image, GIF, or Video)</label>", unsafe_allow_html=True)
     visual_file = st.file_uploader("Visual", type=["jpg", "png", "jpeg", "gif", "mp4", "mov"], label_visibility="collapsed")
     
     if visual_file:
@@ -155,38 +147,29 @@ with st.container():
         else:
             st.image(visual_file, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.markdown("""
-            <div style="height: 100px; width: 100%; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 1rem; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #94a3b8; margin-bottom: 20px;">
-                <i class="fas fa-clapperboard" style="font-size: 20px; margin-bottom: 5px;"></i>
-                <span style="font-size: 9px; font-weight: 900; text-transform: uppercase;">Awaiting Visual Content</span>
-            </div>
-        """, unsafe_allow_html=True)
 
-    # 2. Audio Upload & Preview
-    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 2: Audio Overlay (Optional)</label>", unsafe_allow_html=True)
+    # 2. Audio Source Upload
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Step 2: Audio (Optional - Will loop)</label>", unsafe_allow_html=True)
     audio_file = st.file_uploader("Audio", type=["mp3", "wav", "m4a", "aac"], label_visibility="collapsed")
-    
     if audio_file:
         st.audio(audio_file)
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 3. Parameters
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Total Duration (Sec)</label>", unsafe_allow_html=True)
-        duration = st.number_input("Duration", min_value=1, value=15, label_visibility="collapsed")
+        duration = st.number_input("Duration", min_value=1, value=30, label_visibility="collapsed")
     with col2:
         st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Format</label>", unsafe_allow_html=True)
         out_format = st.selectbox("Format", ["mp4", "gif"], label_visibility="collapsed")
 
-    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Project Filename</label>", unsafe_allow_html=True)
-    custom_name = st.text_input("Filename", value="loop_master", label_visibility="collapsed")
+    st.markdown("<label style='font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase;'>Output Filename</label>", unsafe_allow_html=True)
+    custom_name = st.text_input("Filename", value="loop_output", label_visibility="collapsed")
 
     # 4. Generate Button
-    if st.button("🚀 Render & Loop"):
+    if st.button("🚀 Start Looping Render"):
         if not visual_file:
-            st.error("Please provide a visual source first!")
+            st.error("Please upload a visual file!")
         else:
             vis_ext = visual_file.name.split(".")[-1].lower()
             vis_path = os.path.join("temp", f"input_v.{vis_ext}")
@@ -197,16 +180,18 @@ with st.container():
 
             is_image = vis_ext in ["jpg", "png", "jpeg"]
             
-            with st.status("Generating High-Performance Loop...", expanded=True) as status:
+            with st.status("Mastering Streams...", expanded=True) as status:
+                # --- FFmpeg Looping Technique ---
                 cmd = ["ffmpeg", "-y"]
                 
-                # Logic for Visual Source
+                # Logic for Visual Loop
                 if is_image:
                     cmd += ["-loop", "1", "-i", vis_path]
                 else:
+                    # Previous technique: stream_loop -1 for videos/gifs
                     cmd += ["-stream_loop", "-1", "-i", vis_path]
                 
-                # Logic for Audio Source
+                # Logic for Audio Loop
                 if audio_file:
                     aud_path = os.path.join("temp", "input_a.mp3")
                     with open(aud_path, "wb") as f:
@@ -215,9 +200,8 @@ with st.container():
 
                 cmd += ["-t", str(duration)]
 
-                # Export Settings
                 if out_format == "mp4":
-                    cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+                    cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
                     if is_image:
                         cmd += ["-tune", "stillimage"]
                     if audio_file:
@@ -225,17 +209,13 @@ with st.container():
                     else:
                         cmd += ["-an"]
                 else:
-                    # Optimized GIF palette for loops
+                    # High-quality GIF looping logic
                     cmd += ["-vf", "fps=12,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"]
 
                 cmd.append(output_path)
                 
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                
-                if result.returncode != 0:
-                    st.error(f"FFmpeg Logic Error: {result.stderr}")
-                else:
-                    status.update(label="Ready for Download!", state="complete", expanded=False)
+                subprocess.run(cmd, capture_output=True)
+                status.update(label="Render Finished!", state="complete", expanded=False)
 
             if os.path.exists(output_path):
                 trigger_auto_download(output_path, f"{custom_name}.{out_format}")
